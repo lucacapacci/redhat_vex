@@ -57,7 +57,7 @@ jobs:
             curl -s -o changes.csv "$BASE_URL/changes.csv"
             
             # 2. Calculate the threshold (3 hours ago in seconds)
-            THRESHOLD=$(date -d '30 hours ago' +%s)
+            THRESHOLD=$(date -d '3 hours ago' +%s)
             echo "Checking for changes after: $(date -d @$THRESHOLD)"
 
             # 3. Process the CSV
