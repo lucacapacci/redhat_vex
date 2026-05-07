@@ -44,23 +44,28 @@ jobs:
           # 5. Check and download missing files
           echo "Checking extracted files against index.txt..."
           
-          while IFS= read -r raw_filepath; do
-            # Clean up the string to prevent hidden carriage return issues
-            filepath=$(echo "$raw_filepath" | tr -d '\r')
-            
-            # Skip empty lines
-            if [[ -z "$filepath" ]]; then
-              continue
-            fi
-            
-            # If the file does not exist locally, download it
-            if [[ ! -f "$filepath" ]]; then
-              # Create the directory structure (e.g., '1999/') if it doesn't exist
-              mkdir -p "$(dirname "$filepath")"
-              
-              # Download the specific missing JSON file quietly
-              curl -s -f -o "$filepath" "$BASE_URL/$filepath" || echo "Warning: Failed to download $filepath"
-            fi
+         
+
+          # 1. Create a filtered list of only the files we care about (last 3 years)
+          grep -E "$YEAR_PATTERN" index.txt | tr -d '\r' > filtered_index.txt
+          
+          # 2. Identify which of those files are NOT currently on disk
+          # we use 'comm' to compare the filtered index with actual files in the folders
+          ls -1 {$YEAR_0,$YEAR_1,$YEAR_2}/*.json 2>/dev/null | sort > files_on_disk.txt
+          sort filtered_index.txt > sorted_index.txt
+          comm -23 sorted_index.txt files_on_disk.txt > missing_files.txt
+          
+          # 3. Download missing files in parallel (e.g., 8 at a time)
+          if [ -s missing_files.txt ]; then
+              echo "Downloading $(wc -l < missing_files.txt) missing files in parallel..."
+              # Create directories first
+              cat missing_files.txt | xargs -I {} dirname {} | sort -u | xargs mkdir -p
+              # Download
+              cat missing_files.txt | xargs -n 1 -P 8 -I {} curl -s -f -o "{}" "$BASE_URL/{}"
+          else
+              echo "All files for the last 3 years are present."
+          fi
+          
           done < index.txt
 
       - name: Commit and Push to Repository
