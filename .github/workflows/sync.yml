@@ -1,0 +1,48 @@
+name: Mirror Red Hat CSAF VEX
+
+on:
+  schedule:
+    - cron: '0 * * * *'
+  workflow_dispatch:
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Sync CSAF Files
+        run: |
+          # Red Hat CSAF index for V2
+          URL="https://security.access.redhat.com/data/csaf/v2/advisories/"
+          TARGET_DIR="./csaf-vex"
+          mkdir -p $TARGET_DIR
+
+          # Use wget with --mirror and --no-parent
+          # --timestamping (-N) ensures we only download if the remote file is newer
+          wget --mirror \
+               --protocol-directories \
+               --no-host-directories \
+               --cut-dirs=3 \
+               --no-parent \
+               --accept json \
+               --directory-prefix=$TARGET_DIR \
+               -N $URL
+
+      - name: Commit and Push
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          
+          git add ./csaf-vex
+          
+          if git diff --staged --quiet; then
+            echo "No new advisories found."
+          else
+            git commit -m "Mirror sync: $(date -u +'%Y-%m-%d %H:%M:%S') UTC"
+            git push
+          fi
