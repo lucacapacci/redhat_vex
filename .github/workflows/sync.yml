@@ -3,7 +3,7 @@ name: Sync Red Hat CSAF VEX Data
 on:
   schedule:
     # Runs every 2 hours
-    - cron: '0 */2 * * *'
+    - cron: '0 0 * * *'
   workflow_dispatch:
     # Allows for manual triggering from the GitHub Actions UI
 
